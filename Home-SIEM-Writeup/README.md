@@ -33,7 +33,7 @@ Sysmon was configured on the Windows host (Event IDs 1, 3, 11, 13 enabled) and t
 </localfile>
 ```
 
-*(This section covers the full build , full Windows/Linux install steps are intentionally left out of this report since they're standard vendor documentation, not the finding. If you want to see the raw build steps, they're in [docs/Lab-build-notes.md](../Wazuh-SOC-Build/docs/Lab-build-notes.md))*
+*(This section covers the full build , full Windows/Linux install steps are intentionally left out of this report since they're standard vendor documentation, not the finding. If you want to see the raw build steps, they're in [Wazuh-SOC-Build README.md](../Wazuh-SOC-Build/README.md))*
 
 ---
 
