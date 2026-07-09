@@ -13,7 +13,7 @@ I built a two-endpoint Wazuh SIEM lab (Windows + Linux agents) and used it to de
 | Component | Role |
 |---|---|
 | Wazuh Manager (OVA) | SIEM, manager, indexer, dashboard |
-| Windows 10 VM | Agent: Sysmon + Event Logs + FIM |
+| Windows 11 VM | Agent: Sysmon + Event Logs + FIM |
 | Ubuntu 26.04 VM | Agent: `auth.log`, `syslog` |
 | Kali Linux VM | Attacker box |
 | VMware Workstation, Bridged networking | Virtualization , both target and attacker VMs obtained addresses on the home LAN's subnet (`192.168.0.x`) rather than an isolated virtual network |
