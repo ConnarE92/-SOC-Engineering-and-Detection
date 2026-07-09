@@ -51,44 +51,15 @@ This runs a dictionary attack against the `root` account specifically , a realis
 
 **MITRE ATT&CK mapping:** [T1110 – Brute Force](https://attack.mitre.org/techniques/T1110/)
 
+![Wazuh rule 5758 definition, showing its match pattern and native MITRE ATT&CK tagging](./Image/Event%20ID%205758%20Maximum%20authentication%20attempts%20exceeded..png)
+
 ![Hydra running against target](./Image/Kali%20Linux%20Hydra.png)
 
 ---
 
 ## 3. Evidence , What Actually Fired
 
-```json
-{
-  "rule": {
-    "id": "5758",
-    "level": 8,
-    "description": "Maximum authentication attempts exceeded.",
-    "groups": ["syslog", "sshd", "authentication_failed"],
-    "firedtimes": 106,
-    "mitre": {
-      "id": ["T1110"],
-      "tactic": "Credential Access",
-      "technique": "Brute Force"
-    }
-  },
-  "agent": {
-    "id": "006",
-    "name": "ConnarUbuntu2",
-    "ip": "192.168.0.89"
-  },
-  "data": {
-    "dstuser": "root",
-    "srcip": "192.168.0.94",
-    "srcport": "43364"
-  },
-  "decoder": {
-    "name": "sshd"
-  },
-  "location": "journald",
-  "full_log": "Jul 08 17:35:51 connar-VMware-Virtual-Platform sshd-session[12974]: error: maximum authentication attempts exceeded for root from 192.168.0.94 port 43364 ssh2 [preauth]",
-  "timestamp": "Jul 8, 2026 @ 18:35:52.039"
-}
-```
+![Wazuh Document Details, rule 5758 fired on this event, showing srcip, dstuser, and MITRE mapping](./Image/Event%20ID%205758%20Details.png)
 
 ![Wazuh alert detail , rule 5758 triggered](./Image/Wazuh%20Brute-force%20alert.png)
 
