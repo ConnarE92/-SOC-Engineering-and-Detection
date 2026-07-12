@@ -20,10 +20,10 @@ I deployed T-Pot (a multi-honeypot framework) on an Ubuntu Desktop VM, diagnosed
 | Attacker | Kali Linux VM, same bridged network (confirmed IP: 192.168.0.94) |
 | Sensors used | Cowrie, Dionaea, Heralding, Suricata, p0f |
 
-![T-Pot dashboard, connected/healthy](images/tpot_dashboard_fixed.png)
+![T-Pot dashboard, connected/healthy](images/tpot_Dashboard.png)
 *T-Pot dashboard in its working state, confirming all services (Attack Map, Kibana, Elasticvue, Spiderfoot, etc.) reachable.*
 
-![VM network settings — Bridged adapter](images/vm_network_settings.png)
+![VM network settings — Bridged adapter](images/VM_Network_Settings.png)
 *VMware network configuration showing the Bridged adapter used for this lab.*
 
 > **Note on network isolation:** this lab used Bridged networking rather than Host-only, meaning the T-Pot instance and the Kali attacker VM were both reachable on the actual home network during testing, not confined to a private virtual segment. Since T-Pot is designed to log connections from anything that reaches it, the honeypot could, in principle, have logged interactions from other devices on the home network too — not exclusively the Kali VM. This isn't a theoretical caveat: Section 5's SMB probe was deliberately run against the full `/24` subnet rather than just the honeypot host, and the results (Section 6) show other home-network devices responding alongside the T-Pot host itself, which is direct evidence of what this networking choice actually exposes. Every piece of evidence attributed to Kali below is confirmed by matching source IP (192.168.0.94, verified via `ip a` on the Kali VM — see Section 6). The isolation posture here is intentionally different from the malware analysis lab elsewhere in this portfolio, where Host-only was required because that lab involved live malware samples rather than passive service emulation.
