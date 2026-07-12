@@ -20,7 +20,7 @@ I deployed T-Pot (a multi-honeypot framework) on an Ubuntu Desktop VM, diagnosed
 | Attacker | Kali Linux VM, same bridged network (confirmed IP: 192.168.0.94) |
 | Sensors used | Cowrie, Dionaea, Heralding, Suricata, p0f |
 
-![T-Pot dashboard, connected/healthy](images/tpot_Dashboard.png)
+![T-Pot dashboard, connected/healthy](images/Tpot_Dashboard.png)
 *T-Pot dashboard in its working state, confirming all services (Attack Map, Kibana, Elasticvue, Spiderfoot, etc.) reachable.*
 
 ![VM network settings — Bridged adapter](images/VM_Network_Settings.png)
@@ -121,10 +121,10 @@ Ran from the Kali VM against the T-Pot instance:
 | FTP credential brute-force | `hydra -l admin -P /usr/share/wordlists/rockyou.txt -s 21 ftp://192.168.0.16` | Dionaea / Heralding |
 | SMB probe (full subnet) | `sudo nmap -sV -p445 192.168.0.0/24` | Suricata, Dionaea |
 
-![Nmap scan command](images/nmap_scan_command.png)
-![SSH Hydra brute-force](images/hydra_ssh_scan.png)
-![FTP Hydra brute-force](images/hydra_ftp_scan.png)
-![SMB subnet probe command](images/smb_probe_command.png)
+![Nmap scan command](images/nmap_scan.png)
+![SSH Hydra brute-force](images/hydra_scan.png)
+![FTP Hydra brute-force](images/Hydra_FTP_Scan.png)
+![SMB subnet probe command](images/SMB_probe.png)
 
 Note that the SMB probe was deliberately run against the whole `/24` subnet, not just the honeypot host — this was intentional, to generate direct evidence for the bridged-network caveat in Section 1, rather than leaving it as an untested assumption.
 
@@ -148,7 +148,7 @@ The timing (11:35:28–11:35:41, matching Hydra's run window) and the uniform, s
 
 Hydra found a valid FTP credential (`admin:1234567`) at 12:16:31–32:
 
-![Hydra FTP result](images/hydra_ftp_results.png)
+![Hydra FTP result](images/Hydra_Ftp_Results.png)
 
 The honeypot's own log for the same second shows the identical password submitted and accepted:
 
@@ -169,7 +169,7 @@ This is the strongest piece of correlated evidence in this lab: the same passwor
 
 The `nmap -sV -p-` scan (started 11:22) generated three Suricata alerts, at 11:27:04, 11:28:34, and 11:30:04 — several minutes after the scan began, and only three alerts across an ~8-minute full port scan, rather than continuous alerting:
 
-![Suricata Nmap alert](images/nmap_suricata_alert.png)
+![Suricata Nmap alert](images/nmap_results.png)
 
 Two things are worth flagging honestly rather than glossing over:
 
@@ -202,8 +202,8 @@ This confirms Dionaea is doing genuine protocol-level emulation — negotiating 
 
 **Suricata's response — two near-simultaneous alerts:**
 
-![SMB alert detail 1 (12:25:22.232)](images/smb_alert_1.png)
-![SMB alert detail 2 (12:25:22.236)](images/smb_alert_2.png)
+![SMB alert detail 1 (12:25:22.232)](images/smb_probe_results2.png)
+![SMB alert detail 2 (12:25:22.236)](images/smb_probe_results3.png)
 
 Two alerts fired 4 milliseconds apart for this SMB traffic, both classified identically:
 
