@@ -226,7 +226,7 @@ tpo1@connar-VMware-Virtual-Platform:~$ ip a  (run on Kali)
 eth0: inet 192.168.0.94/24
 ```
 
-![Kali IP confirmation](images/kali_ip_confirmation.png)
+![Kali IP confirmation](images/Kali_IP.png)
 
 `192.168.0.94` matches the `src_ip` field in the SMB flow log exactly, confirming this traffic came from the Kali VM as intended, rather than an unrelated device on the LAN.
 
