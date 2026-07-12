@@ -51,32 +51,24 @@ Suricata inspects raw network traffic for known malicious signatures, and p0f pa
 
 CUPS on Ubuntu is socket-activated: `cupsd` can show as `active (running)` in `systemctl status` without actually holding the listening socket at that moment, since the socket unit (`cups.socket`) is what claims the port, and it typically does this at boot. This means the conflict is timing-dependent — restarting the `tpot` service on a running system doesn't reliably reproduce it, because Docker's `ipphoney` container can win the race for the port if CUPS's socket hasn't been triggered yet. The original failure happened at boot, so reproducing it required an actual reboot, not just a service restart.
 
-**Reproducing the fault (post-reboot):**
+**Broken state — port 631 already in contention:**
 
-```
-tpo1@connar-VMware-Virtual-Platform:~/Desktop$ docker ps -a
-CONTAINER ID   IMAGE                              STATUS                    NAMES
-3b3327bfec53   snare:24.04.1                      Created                   snare
-bdec7a106512   tanner:24.04.1                     Created                   tanner
-020bfeefc027   kibana:24.04.1                     Created                   kibana
-ffad5f725110   logstash:24.04.1                   Created                   logstash
-...
-e00859b60b85   ipphoney:24.04.1                   Created                   ipphoney
-...
-6b6e3fc58fd1   tpotinit:24.04.1                   Up 13 seconds (healthy)   tpotinit
-```
+![Port 631 listening, pre-diagnosis](images/Broken_Statepng.png)
 
-The majority of containers — including `ipphoney` itself — are stuck in `Created`, never actually starting, while only a handful (`miniprint`, `nginx`, `p0f`, `cowrie`, `fatt`, `suricata`, `honeytrap`, `tpotinit`) reached `Up`. This shows the failure isn't isolated to one container: because `ipphoney` couldn't bind to its port, Docker Compose's startup ordering stalled a large batch of dependent containers behind it in `Created` limbo.
+**Broken state — dashboard unreachable:**
 
-**Confirming the root cause:**
+![T-Pot dashboard failing to load](images/Broken_Page.png)
+*Browser returns `PR_END_OF_FILE_ERROR` when the stack is down — the dashboard simply isn't there to respond.*
 
-```
-tpo1@connar-VMware-Virtual-Platform:~/Desktop$ sudo ss -tulpn | grep 631
-tcp   LISTEN 0      4096       127.0.0.1:631        0.0.0.0:*    users:(("cupsd",pid=1438,fd=7))
-tcp   LISTEN 0      4096           [::1]:631           [::]:*    users:(("cupsd",pid=1438,fd=6))
-```
+**Reproducing the fault (post-reboot) — container cascade failure:**
 
-`cupsd` (PID 1438) is confirmed by name as the process holding port 631 — not inferred, but directly named in the socket table. Note that CUPS is bound to loopback (`127.0.0.1`/`::1`) here rather than `0.0.0.0` — the conflict still occurs because Docker's port-mapping for `ipphoney` requires binding `0.0.0.0:631` on the host, and the port number is already claimed at the OS level regardless of which interface CUPS itself listens on.
+![docker ps -a showing containers stuck in Created](images/docker_broken.png)
+*The majority of containers — including `ipphoney` itself — are stuck in `Created`, never actually starting, while only a handful (`miniprint`, `nginx`, `p0f`, `cowrie`, `fatt`, `suricata`, `honeytrap`, `tpotinit`) reached `Up`. Because `ipphoney` couldn't bind to its port, Docker Compose's startup ordering stalled a large batch of dependent containers behind it in `Created` limbo.*
+
+**Confirming the root cause — `cupsd` named explicitly:**
+
+![sudo ss -tulpn showing cupsd owning port 631](images/cupsd.png)
+*`cupsd` (PID 1438) confirmed by name as the process holding port 631 — not inferred, but directly named in the socket table. Note that CUPS is bound to loopback (`127.0.0.1`/`::1`) here rather than `0.0.0.0` — the conflict still occurs because Docker's port-mapping for `ipphoney` requires binding `0.0.0.0:631` on the host, and the port number is already claimed at the OS level regardless of which interface CUPS itself listens on.*
 
 **Fix:**
 
@@ -87,9 +79,9 @@ sudo systemctl mask cups cups-browsed
 sudo systemctl restart tpot
 ```
 
-**Verification:**
+**Verification — fix applied and stack recovering:**
 
-![CUPS fix applied and stack recovering](images/cups_fix_and_recovery.png)
+![CUPS fix applied and stack recovering](images/docker_ps.png)
 *Full remediation sequence captured in one terminal session: `mask` applied, `tpot` restarted, `docker ps` showing containers healthy, and `ss -tulpn | grep 631` confirming `docker-proxy` (not `cupsd`) now owns the port.*
 
 One detail worth noting from this output: the `disable` command returned a warning that the CUPS unit files "have no installation config" and are "not meant to be enabled or disabled using systemctl" — this is expected for socket-activated units and is not a failure. `mask`, which ran immediately after and completed silently, is the command that actually prevents the unit from being triggered again. Reading past a warning like this rather than assuming a command failed (or ignoring it) is worth calling out, since it's easy to misinterpret systemd output at a glance.
@@ -124,7 +116,7 @@ Ran from the Kali VM against the T-Pot instance:
 ![Nmap scan command](images/nmap_scan.png)
 ![SSH Hydra brute-force](images/hydra_scan.png)
 ![FTP Hydra brute-force](images/Hydra_FTP_Scan.png)
-![SMB subnet probe command](images/SMB_probe.png)
+![SMB subnet probe command and results](images/SMB_probe.png)
 
 Note that the SMB probe was deliberately run against the whole `/24` subnet, not just the honeypot host — this was intentional, to generate direct evidence for the bridged-network caveat in Section 1, rather than leaving it as an untested assumption.
 
@@ -136,11 +128,11 @@ Note that the SMB probe was deliberately run against the whole `/24` subnet, not
 
 Hydra found a valid credential (`root:iloveyou`) against the emulated SSH service in a single attempt at 11:35:41 (BST).
 
-![Hydra SSH result](images/hydra_ssh_scan.png)
+![Hydra SSH result](images/hydra_scan.png)
 
 Cowrie's logs show a cluster of `session.closed` events at 11:35:41.7xx, each around 1.1 seconds in duration:
 
-![Cowrie session log — repeated short sessions](images/cowrie_ssh_sessions.png)
+![Cowrie session log — repeated short sessions](images/cowrie_hyrda_results.png)
 
 The timing (11:35:28–11:35:41, matching Hydra's run window) and the uniform, short session durations are consistent with automated brute-force connection behavior rather than a human operator — each attempt opens, authenticates or fails, and closes in about a second.
 
@@ -148,9 +140,11 @@ The timing (11:35:28–11:35:41, matching Hydra's run window) and the uniform, s
 
 Hydra found a valid FTP credential (`admin:1234567`) at 12:16:31–32:
 
-![Hydra FTP result](images/Hydra_Ftp_Results.png)
+![Hydra FTP result](images/Hydra_FTP_Scan.png)
 
 The honeypot's own log for the same second shows the identical password submitted and accepted:
+
+![Honeypot FTP log matching Hydra's credential](images/Hydra_FTP_Results.png)
 
 ```
 @timestamp:  Jul 11, 2026 @ 12:16:32.783
@@ -180,13 +174,13 @@ Two things are worth flagging honestly rather than glossing over:
 
 **Subnet exposure (Section 1 caveat, demonstrated):** the probe was run against the full `/24`, and results show other home-network devices (`.1`, `.12`) responding on port 445 alongside the T-Pot host (`.16`):
 
-![SMB probe results across subnet](images/smb_probe_results.png)
+![SMB probe results across subnet](images/SMB_probe.png)
 
 This is the direct, practical example behind the Section 1 disclosure — under a bridged network, a scan aimed broadly at "the network" surfaces real devices, not just the honeypot, and that's worth being explicit about rather than treating as a hypothetical risk.
 
 **Protocol-level negotiation (Dionaea):** the honeypot didn't just accept a TCP connection on 445 — it completed a full SMB1 negotiate-protocol exchange:
 
-![SMB dialect negotiation detail](images/smb_dialect_negotiation.png)
+![SMB dialect negotiation detail](images/SMB_probe_results.png)
 
 Key fields:
 ```
@@ -202,8 +196,8 @@ This confirms Dionaea is doing genuine protocol-level emulation — negotiating 
 
 **Suricata's response — two near-simultaneous alerts:**
 
-![SMB alert detail 1 (12:25:22.232)](images/smb_probe_results2.png)
-![SMB alert detail 2 (12:25:22.236)](images/smb_probe_results3.png)
+![SMB alert detail 1 (12:25:22.232)](images/SMB_probe_results2.png)
+![SMB alert detail 2 (12:25:22.236)](images/SMB_probe_results3.png)
 
 Two alerts fired 4 milliseconds apart for this SMB traffic, both classified identically:
 
